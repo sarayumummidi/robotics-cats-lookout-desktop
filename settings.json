@@ -4,6 +4,7 @@
             "name": "Spray Valley",
             "youtube_url": "https://www.youtube.com/watch?v=HghxOQ12dy4",
             "frequency": 60,
+            "instance_type": "youtube",
             "lookout_endpoint": "https://lax.pop.roboticscats.com/api/detects?apiKey=d4732868019a2b99b04a25d88ea0d5c3",
             "latitude": 50.8641,
             "longitude": -115.356,

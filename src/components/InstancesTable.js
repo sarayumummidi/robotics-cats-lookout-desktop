@@ -1,6 +1,6 @@
 import React from 'react'
 
-function InstancesTable({ instances, onStart, onStop, onEdit, onDelete }) {
+function InstancesTable({ instances, onStart, onStop, onEdit, onDelete, filterType, setFilterType }) {
   const getInstanceType = (instance) => {
     if (instance.youtube_url) return 'YouTube'
     if (instance.camera_url) return 'Camera'
@@ -31,7 +31,32 @@ function InstancesTable({ instances, onStart, onStop, onEdit, onDelete }) {
 
   return (
     <div className="instances-section">
-      <h2>Instances</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2>Instances</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontWeight: 'bold', marginRight: '10px' }}>Filter:</label>
+          <button 
+            className={`btn ${filterType === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFilterType('all')}
+            style={{ marginRight: '5px' }}
+          >
+            <i className="fas fa-list"></i> All
+          </button>
+          <button 
+            className={`btn ${filterType === 'camera' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFilterType('camera')}
+            style={{ marginRight: '5px' }}
+          >
+            <i className="fas fa-video"></i> Camera
+          </button>
+          <button 
+            className={`btn ${filterType === 'youtube' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFilterType('youtube')}
+          >
+            <i className="fab fa-youtube"></i> YouTube
+          </button>
+        </div>
+      </div>
       <div className="table-container">
         <table className="instances-table">
           <thead>

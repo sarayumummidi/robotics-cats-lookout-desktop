@@ -11,6 +11,7 @@ function Dashboard() {
   const [showModal, setShowModal] = useState(false)
   const [editingInstance, setEditingInstance] = useState(null)
   const [notifications, setNotifications] = useState([])
+  const [filterType, setFilterType] = useState('all') // 'all', 'camera', 'youtube'
   const navigate = useNavigate()
 
   const { instances, loading, error, refreshInstances } = useInstances()
@@ -57,7 +58,11 @@ function Dashboard() {
         const error = await response.json()
         showNotification(error.error || `Failed to ${action} instance`, 'error')
       } else {
-        showNotification(`Instance ${action}ed successfully`, 'success')
+        if (action === 'stop') {
+          showNotification(`Instance ${action}ped successfully`, 'success')
+        } else {
+          showNotification(`Instance ${action}ed successfully`, 'success')
+        }
         refreshInstances()
       }
     } catch (error) {
@@ -94,6 +99,20 @@ function Dashboard() {
     return <div>Error: {error}</div>
   }
 
+  // Filter instances based on selected type
+  const filteredInstances = instances.filter((instance) => {
+    if (filterType === 'all') return true
+
+    // Determine instance type based on available fields
+    let instanceType = instance.instance_type
+    if (!instanceType) {
+      if (instance.youtube_url) instanceType = 'youtube'
+      else if (instance.camera_url) instanceType = 'camera'
+    }
+
+    return instanceType === filterType
+  })
+
   return (
     <div className="container">
       <header>
@@ -118,14 +137,16 @@ function Dashboard() {
       </header>
 
       <InstancesTable
-        instances={instances}
+        instances={filteredInstances}
         onStart={(name) => handleInstanceAction(name, 'start')}
         onStop={(name) => handleInstanceAction(name, 'stop')}
         onEdit={handleEditInstance}
         onDelete={handleDeleteInstance}
+        filterType={filterType}
+        setFilterType={setFilterType}
       />
 
-      <InstanceMap instances={instances} />
+      <InstanceMap instances={filteredInstances} />
 
       {showModal && (
         <InstanceModal

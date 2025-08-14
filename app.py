@@ -32,6 +32,7 @@ SETTINGS_FILE = 'settings.json'
 instances_status = {}
 instance_objects = {}
 system_stats = {'cpu': 0, 'network_sent': 0, 'network_recv': 0}
+alerted_detections = {}  # Track which detections have been alerted about
 
 def load_settings():
     try:
@@ -305,6 +306,7 @@ def start_instance(instance_name):
 def stop_instance(instance_name):
     
     try:
+        instance_type = None
         if instance_name in instance_objects:
             instance_obj = instance_objects[instance_name]
             instance_type = instance_obj.instance_type
@@ -322,8 +324,11 @@ def stop_instance(instance_name):
             save_settings(settings)
         
         socketio.emit('instance_status_changed', {'name': instance_name, 'status': 'stopped'})
-        if os.path.exists(f"./frames/{instance_type}_{instance_name.lower().replace(' ', '')}.jpg"):
+        
+        # Only try to remove frame file if we know the instance type
+        if instance_type and os.path.exists(f"./frames/{instance_type}_{instance_name.lower().replace(' ', '')}.jpg"):
             os.remove(f"./frames/{instance_type}_{instance_name.lower().replace(' ', '')}.jpg")
+        
         return jsonify({'success': True, 'status': 'stopped'})
         
     except Exception as e:
@@ -386,20 +391,28 @@ def get_all_detections():
     
     # Check for detections and trigger WhatsApp alert
     if detections['Bigtree']['results'][0]['score'] > 0.5:
-        settings = load_settings()
-        instance_config = next((inst for inst in settings['instances'] if inst['name'] == 'big tree'), None)
-        if not instance_config:
-            print(f"[SYSTEM] No latitude, longitude, or instance name found for big tree")
-            return jsonify({'detections': detections})
-        latitude = instance_config.get('latitude', 0.0)
-        longitude = instance_config.get('longitude', 0.0)
-        instance_name = instance_config.get('name', 'big tree')
+        # Create a unique key for this detection to prevent duplicates
+        detection_key = f"big_tree_{detections['Bigtree']['results'][0]['score']}_{detections['Bigtree']['results'][0]['left']}_{detections['Bigtree']['results'][0]['top']}"
         
-        try:
-            send_whatsapp_alert(instance_name, latitude, longitude)
-            print(f"[SYSTEM] WhatsApp alert sent for detection in {instance_name} at location {latitude}, {longitude}")
-        except Exception as e:
-            print(f"[SYSTEM] Error sending WhatsApp alert for {instance_name}: {e}")
+        # Only send alert if we haven't already alerted for this specific detection
+        if detection_key not in alerted_detections:
+            settings = load_settings()
+            instance_config = next((inst for inst in settings['instances'] if inst['name'] == 'big tree'), None)
+            if not instance_config:
+                print(f"[SYSTEM] No latitude, longitude, or instance name found for big tree")
+                return jsonify({'detections': detections})
+            latitude = instance_config.get('latitude', 0.0)
+            longitude = instance_config.get('longitude', 0.0)
+            instance_name = instance_config.get('name', 'big tree')
+            
+            try:
+                send_whatsapp_alert(instance_name, latitude, longitude)
+                alerted_detections[detection_key] = datetime.now()
+                print(f"[SYSTEM] WhatsApp alert sent for detection in {instance_name} at location {latitude}, {longitude}")
+            except Exception as e:
+                print(f"[SYSTEM] Error sending WhatsApp alert for {instance_name}: {e}")
+        else:
+            print(f"[SYSTEM] Alert already sent for detection {detection_key}, skipping...")
     
     return jsonify({'detections': detections})
 
