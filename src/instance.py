@@ -15,6 +15,8 @@ ydl_opts = {
 if not os.path.exists("./frames"):
     os.makedirs("./frames")
 
+num_camera_instances = 0
+
 class Instance:
     def __init__(self, id, name, frequency, lookout_endpoint, latitude, longitude):
         self.id = id
@@ -129,6 +131,9 @@ class CameraInstance(Instance):
         self.folder_path = folder_path
         self.instance_type = "camera"
         self.image_file = f"./frames/camera_{self.name.lower().replace(' ', '')}.jpg"
+        global num_camera_instances
+        num_camera_instances += 1
+        self.num = num_camera_instances
         print(f"[INSTANCE {self.id}] Initialized with Camera URL: {self.camera_url}, Folder Path: {self.folder_path}, Frequency: {self.frequency} seconds")
 
     def start(self):
@@ -137,8 +142,7 @@ class CameraInstance(Instance):
         try:
             while self.run:
                 start_time = time.time()
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                image_path = os.path.join(self.folder_path, "capture.jpg")
+                image_path = os.path.join(self.folder_path, f"capture{self.num}.jpg")
                 
                 # step 1: capture image
                 try: 

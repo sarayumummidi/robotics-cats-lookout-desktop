@@ -346,25 +346,39 @@ def get_images():
                     source_name = filename.replace('camera_', '').replace('.jpg', '').replace('_', ' ').title()
                     instance_type = 'camera'
                 else:
-                    source_name = filename.replace('.jpg', '')
+                    source_name = filename.replace('.jpg', '').replace('_', ' ').title()
                     instance_type = 'unknown'
-                
-                # Get detection data from running instance
-                detections = None
-                if source_name in instance_objects:
-                    instance_obj = instance_objects[source_name]
-                    if hasattr(instance_obj, 'latest_detections'):
-                        detections = instance_obj.latest_detections
                 
                 images.append({
                     'url': f'/frames/{filename}',
                     'source': source_name,
                     'type': instance_type,
-                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'detections': detections
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 })
     
     return jsonify({'images': images})
+
+@app.route('/api/detections', methods=['GET'])
+def get_all_detections():
+    """Get detection results for all running instances"""
+    detections = {}
+    
+    
+    
+    # Add fake detection results for testing (overrides real data)
+    detections['Bigtree'] = {
+        'results': [
+            {
+                'bottom': 413,
+                'left': 726,
+                'right': 862,
+                'score': 0.8626816868782043,
+                'top': 345
+            }
+        ]
+    }
+    
+    return jsonify({'detections': detections})
 
 @socketio.on('connect')
 def handle_connect():

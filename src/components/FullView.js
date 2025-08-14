@@ -12,15 +12,32 @@ function FullView() {
 
   const fetchImages = async () => {
     try {
-      const response = await fetch('/api/images')
-      if (response.ok) {
-        const data = await response.json()
-        setImages(data.images || [])
+      const [imagesResponse, detectionsResponse] = await Promise.all([
+        fetch('/api/images'),
+        fetch('/api/detections'),
+      ])
+
+      if (imagesResponse.ok && detectionsResponse.ok) {
+        const imagesData = await imagesResponse.json()
+        const detectionsData = await detectionsResponse.json()
+        console.log(detectionsData)
+
+        const imagesWithDetections = imagesData.images.map((image) => {
+          const detections = detectionsData.detections[image.source] || null
+          console.log(`Image: ${image.source}, Detections:`, detections)
+          return { ...image, detections }
+        })
+
+        setImages(imagesWithDetections || [])
       } else {
-        console.error('Failed to fetch images:', response.status)
+        console.error(
+          'Failed to fetch data:',
+          imagesResponse.status,
+          detectionsResponse.status
+        )
       }
     } catch (error) {
-      console.error('Error fetching images:', error)
+      console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
     }
@@ -71,10 +88,14 @@ function FullView() {
                           key={detIndex}
                           className="bounding-box"
                           style={{
-                            left: `${detection.left}px`,
-                            top: `${detection.top}px`,
-                            width: `${detection.right - detection.left}px`,
-                            height: `${detection.bottom - detection.top}px`,
+                            left: `${(detection.left / 1920) * 100}%`,
+                            top: `${(detection.top / 1080) * 100}%`,
+                            width: `${
+                              ((detection.right - detection.left) / 1920) * 100
+                            }%`,
+                            height: `${
+                              ((detection.bottom - detection.top) / 1080) * 100
+                            }%`,
                           }}
                           title={`Detection (${Math.round(
                             detection.score * 100
@@ -89,7 +110,9 @@ function FullView() {
                   <div className="image-time">{image.timestamp}</div>
                   {image.detections && image.detections.results && (
                     <div className="detection-count">
-                      {image.detections.results.length} detection(s)
+                      {image.detections.results.length} detection(s) -{' '}
+                      {Math.round(image.detections.results[0].score * 100)}%
+                      confidence
                     </div>
                   )}
                 </div>
