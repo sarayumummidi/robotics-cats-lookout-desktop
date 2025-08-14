@@ -12,6 +12,9 @@ ydl_opts = {
             'quiet': True,
 }
 
+if not os.path.exists("./frames"):
+    os.makedirs("./frames")
+
 class Instance:
     def __init__(self, id, name, frequency, lookout_endpoint, latitude, longitude):
         self.id = id
@@ -23,6 +26,8 @@ class Instance:
         self.run = True
         self.instance_type = ""
         self.latest_frame = None
+        self.latest_detections = None
+
     
     def start(self):
         raise NotImplementedError("Subclasses must implement start()")
@@ -37,11 +42,15 @@ class YoutubeInstance(Instance):
         self.youtube_url = youtube_url
         self.ydl = yt_dlp.YoutubeDL(ydl_opts)
         self.instance_type = "youtube"
+        self.image_file = f"./frames/youtube_{self.name.lower().replace(' ', '')}.jpg"
         print(f"[INSTANCE {self.id}] Initialized with YouTube URL: {self.youtube_url}, Lookout Endpoint URL: {self.lookout_endpoint}, Frequency: {self.frequency} seconds")
 
     def start(self):
         t = 0
         info = self.ydl.extract_info(self.youtube_url, download=False)
+        if info is None:
+            print(f"[INSTANCE {self.id}] Error: Could not extract video info")
+            return
         stream_url = info['url']
         
         cap = cv2.VideoCapture(stream_url)
@@ -65,6 +74,24 @@ class YoutubeInstance(Instance):
                     continue
 
                 self.latest_frame = frame.copy()
+                
+                # Save frame to single image file
+                cv2.imwrite(self.image_file, frame)
+                print(f"[INSTANCE {self.id}] Image captured and saved to {self.image_file} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                
+                # Add some debugging to check if frames are actually different
+                if hasattr(self, 'last_frame_hash'):
+                    import hashlib
+                    current_hash = hashlib.md5(frame.tobytes()).hexdigest()
+                    if current_hash == self.last_frame_hash:
+                        print(f"[INSTANCE {self.id}] WARNING: Same frame detected, stream might be static")
+                    else:
+                        print(f"[INSTANCE {self.id}] New frame detected")
+                    self.last_frame_hash = current_hash
+                else:
+                    import hashlib
+                    self.last_frame_hash = hashlib.md5(frame.tobytes()).hexdigest()
+                
                 _, buffer = cv2.imencode('.jpg', frame)
                 headers = {'Content-Type': 'image/jpeg'}
                 try:
@@ -73,6 +100,13 @@ class YoutubeInstance(Instance):
                         print(f"[INSTANCE {self.id}] Warning: Failed to post frame, status code {response.status_code}")
                     else:
                         print(f"[INSTANCE {self.id}] Frame posted successfully at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                        # Parse detection results
+                        try:
+                            detection_data = response.json()
+                            self.latest_detections = detection_data
+                            print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
+                        except Exception as parse_error:
+                            print(f"[INSTANCE {self.id}] Error parsing detection results: {parse_error}")
                 except Exception as e:
                     print(f"[INSTANCE {self.id}] Error posting frame: {e}")
                 
@@ -94,16 +128,11 @@ class CameraInstance(Instance):
         self.camera_password = camera_password
         self.folder_path = folder_path
         self.instance_type = "camera"
+        self.image_file = f"./frames/camera_{self.name.lower().replace(' ', '')}.jpg"
         print(f"[INSTANCE {self.id}] Initialized with Camera URL: {self.camera_url}, Folder Path: {self.folder_path}, Frequency: {self.frequency} seconds")
 
     def start(self):
         t = 0
-        
-        # Create folder if it doesn't exist
-        if not os.path.exists(self.folder_path):
-            os.makedirs(self.folder_path)
-            print(f"[INSTANCE {self.id}] Created folder: {self.folder_path}")
-        
         
         try:
             while self.run:
@@ -127,6 +156,10 @@ class CameraInstance(Instance):
                             continue
                         cv2.imwrite(image_path, frame)
                         print(f"[INSTANCE {self.id}] Image captured and saved to {image_path}")
+
+                        # Save to image file for full view dashboard
+                        cv2.imwrite(self.image_file, frame)
+                        print(f"[INSTANCE {self.id}] Image captured and saved to {self.image_file}")
                 except Exception as e:
                     print(f"[INSTANCE {self.id}] Error capturing image: {e}")
                     time.sleep(5)
@@ -140,6 +173,13 @@ class CameraInstance(Instance):
                             print(f"[INSTANCE {self.id}] Error: Failed to post image, status code {response.status_code}")
                         else:
                             print(f"[INSTANCE {self.id}] Image posted successfully at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                            # Parse detection results
+                            try:
+                                detection_data = response.json()
+                                self.latest_detections = detection_data
+                                print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
+                            except Exception as parse_error:
+                                print(f"[INSTANCE {self.id}] Error parsing detection results: {parse_error}")
                 except Exception as e:
                     print(f"[INSTANCE {self.id}] Error posting image: {e}")
                     time.sleep(5)

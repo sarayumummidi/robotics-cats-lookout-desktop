@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, send_file
 from flask_socketio import SocketIO, emit
 import json
 import psutil
@@ -14,6 +14,15 @@ from src.instance import Instance, YoutubeInstance, CameraInstance
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(24)
 socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False)
+
+# Serve static files from frames and images folders
+@app.route('/frames/<path:filename>')
+def serve_frame(filename):
+    return send_file(f'./frames/{filename}', mimetype='image/jpeg')
+
+@app.route('/images/<path:filename>')
+def serve_image(filename):
+    return send_file(f'./images/{filename}', mimetype='image/jpeg')
 
 SETTINGS_FILE = 'settings.json'
 
@@ -295,6 +304,7 @@ def stop_instance(instance_name):
     try:
         if instance_name in instance_objects:
             instance_obj = instance_objects[instance_name]
+            instance_type = instance_obj.instance_type
             instance_obj.stop()
             del instance_objects[instance_name]
             print(f"[SYSTEM] Stopped instance '{instance_name}'")
@@ -309,11 +319,52 @@ def stop_instance(instance_name):
             save_settings(settings)
         
         socketio.emit('instance_status_changed', {'name': instance_name, 'status': 'stopped'})
+        if os.path.exists(f"./frames/{instance_type}_{instance_name.lower().replace(' ', '')}.jpg"):
+            os.remove(f"./frames/{instance_type}_{instance_name.lower().replace(' ', '')}.jpg")
         return jsonify({'success': True, 'status': 'stopped'})
         
     except Exception as e:
         print(f"[SYSTEM] Error stopping instance '{instance_name}': {e}")
         return jsonify({'error': f'Failed to stop instance: {str(e)}'}), 500
+    
+
+
+@app.route('/api/images', methods=['GET'])
+def get_images():
+    """Get list of all images from frames folder"""
+    images = []
+    
+    # Get all jpg files from frames folder
+    if os.path.exists('./frames'):
+        for filename in os.listdir('./frames'):
+            if filename.endswith('.jpg'):
+                # Extract instance name from filename (e.g., youtube_sprayvalley.jpg -> Spray Valley)
+                if filename.startswith('youtube_'):
+                    source_name = filename.replace('youtube_', '').replace('.jpg', '').replace('_', ' ').title()
+                    instance_type = 'youtube'
+                elif filename.startswith('camera_'):
+                    source_name = filename.replace('camera_', '').replace('.jpg', '').replace('_', ' ').title()
+                    instance_type = 'camera'
+                else:
+                    source_name = filename.replace('.jpg', '')
+                    instance_type = 'unknown'
+                
+                # Get detection data from running instance
+                detections = None
+                if source_name in instance_objects:
+                    instance_obj = instance_objects[source_name]
+                    if hasattr(instance_obj, 'latest_detections'):
+                        detections = instance_obj.latest_detections
+                
+                images.append({
+                    'url': f'/frames/{filename}',
+                    'source': source_name,
+                    'type': instance_type,
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'detections': detections
+                })
+    
+    return jsonify({'images': images})
 
 @socketio.on('connect')
 def handle_connect():

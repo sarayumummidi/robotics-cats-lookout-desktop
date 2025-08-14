@@ -12,7 +12,6 @@
         {
             "name": "big tree",
             "instance_type": "camera",
-            "youtube_url": "",
             "camera_url": "http://demo.customer.roboticscats.com:55758/axis-cgi/jpg/image.cgi?resolution=1920x1080",
             "camera_username": "root",
             "camera_password": "Cashflow108!",
