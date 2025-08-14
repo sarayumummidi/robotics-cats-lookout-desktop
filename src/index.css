@@ -495,8 +495,14 @@ header h1 i {
   color: #d4d4d4;
 }
 
-.modal form {
+.modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
   padding: 16px;
+}
+
+.modal form {
+  padding: 0;
 }
 
 .form-group {
@@ -686,4 +692,78 @@ header h1 i {
   .form-actions {
     flex-direction: column;
   }
+}
+
+/* FullView Component */
+.full-view {
+  min-height: 100vh;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 16px;
+}
+
+.full-view h1 {
+  color: #d4d4d4;
+  font-size: 25px;
+  font-weight: 500;
+  margin-bottom: 1px;
+  text-align: center;
+  margin-right: 100px;
+}
+
+.full-view h2 {
+  color: #d4d4d4 !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  margin-bottom: 0px !important;
+  text-align: left !important;
+}
+
+.full-view .logo {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+.full-view .back-button {
+  background: #525255;
+  border: 1px solid #2b2b2d;
+  border-radius: 10px;
+  cursor: pointer;
+  padding: 10px;
+  margin: 0;
+  color: #d4d4d4;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  text-align: right;
+}
+
+.header-container {
+  background: #2d2d30;
+  padding: 12px;
+  border: 1px solid #3c3c3c;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-container h2 {
+  margin-bottom: 16px;
+  color: #d4d4d4;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.camera-container {
+  background: #2d2d30;
+  padding: 5vh 5vw;
+  border: 1px solid #3c3c3c;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  min-height: 85vh;
 }

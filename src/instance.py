@@ -160,7 +160,7 @@ class CameraInstance(Instance):
 if __name__ == "__main__":
     camera_url = "http://demo.customer.roboticscats.com:55758/axis-cgi/jpg/image.cgi?resolution=1920x1080"
     camera_username = "root"
-    camera_password = "password"
+    camera_password = "Cashflow108!"
     folder_path = "./images"
     instance = CameraInstance(2, "Camera-1", camera_url, "https://lax.pop.roboticscats.com/api/detects?apiKey=69ee9fa22340e2d84da76c282f9d2033", camera_username, camera_password, folder_path, 60)
     instance.start()

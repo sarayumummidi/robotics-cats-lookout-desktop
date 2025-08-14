@@ -5,11 +5,13 @@ import InstanceModal from './InstanceModal'
 import NotificationSystem from './NotificationSystem'
 import { useSocket } from '../hooks/useSocket'
 import { useInstances } from '../hooks/useInstances'
+import { useNavigate } from 'react-router-dom'
 
 function Dashboard() {
   const [showModal, setShowModal] = useState(false)
   const [editingInstance, setEditingInstance] = useState(null)
   const [notifications, setNotifications] = useState([])
+  const navigate = useNavigate()
 
   const { instances, loading, error, refreshInstances } = useInstances()
   const { systemStats } = useSocket()
@@ -98,9 +100,19 @@ function Dashboard() {
         <h1>
           <i className="fas fa-tachometer-alt"></i> Lookout Desktop
         </h1>
-        <div className="header-actions">
+
+        <div
+          className="header-actions"
+          style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+        >
           <button className="btn btn-primary" onClick={handleAddInstance}>
             <i className="fas fa-plus"></i> Add Instance
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/fullview')}
+          >
+            <i className="FullView"></i> Camera View
           </button>
         </div>
       </header>

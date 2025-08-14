@@ -1,14 +1,6 @@
 import React from 'react'
 
 function InstancesTable({ instances, onStart, onStop, onEdit, onDelete }) {
-  const extractYouTubeId = (url) => {
-    if (!url) return 'Unknown'
-    const match = url.match(
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/
-    )
-    return match ? match[1].substring(0, 11) : 'Unknown'
-  }
-
   const getInstanceType = (instance) => {
     if (instance.youtube_url) return 'YouTube'
     if (instance.camera_url) return 'Camera'
@@ -19,6 +11,22 @@ function InstancesTable({ instances, onStart, onStop, onEdit, onDelete }) {
     if (instance.youtube_url) return instance.youtube_url
     if (instance.camera_url) return instance.camera_url
     return '#'
+  }
+
+  const truncateUrl = (url, maxLength = 25) => {
+    if (!url) return 'Unknown'
+    if (url.length <= maxLength) return url
+    return url.substring(0, maxLength) + '...'
+  }
+
+  const getDisplayText = (instance) => {
+    if (instance.youtube_url) {
+      return truncateUrl(instance.youtube_url)
+    }
+    if (instance.camera_url) {
+      return truncateUrl(instance.camera_url)
+    }
+    return 'Unknown'
   }
 
   return (
@@ -57,10 +65,18 @@ function InstancesTable({ instances, onStart, onStop, onEdit, onDelete }) {
                     href={getInstanceLink(instance)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="youtube-link"
+                    className="instance-link"
+                    style={{ color: 'inherit' }}
+                    title={getInstanceLink(instance)}
                   >
-                    <i className="fab fa-youtube"></i>
-                    {extractYouTubeId(getInstanceLink(instance))}...
+                    <i
+                      className={`${
+                        getInstanceType(instance).toLowerCase() === 'youtube'
+                          ? 'fab fa-youtube'
+                          : 'fas fa-video'
+                      }`}
+                    ></i>
+                    {getDisplayText(instance)}
                   </a>
                 </td>
                 <td>
