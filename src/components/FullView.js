@@ -45,8 +45,8 @@ function FullView() {
 
   useEffect(() => {
     fetchImages()
-    // Refresh images every 30 seconds
-    const interval = setInterval(fetchImages, 30000)
+    // Refresh images every 10 seconds for more frequent updates
+    const interval = setInterval(fetchImages, 10000)
     return () => clearInterval(interval)
   }, [])
 
@@ -73,7 +73,7 @@ function FullView() {
               <div key={index} className="image-card">
                 <div className="image-container">
                   <img
-                    src={image.url}
+                    src={`${image.url}?t=${Date.now()}`}
                     alt={`Camera ${image.source}`}
                     className="camera-image"
                     onError={(e) => {
