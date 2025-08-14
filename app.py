@@ -7,9 +7,12 @@ import time
 import subprocess
 import os
 from datetime import datetime
-
 import re
 from src.instance import Instance, YoutubeInstance, CameraInstance
+from twilio.rest import Client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(24)
@@ -363,7 +366,10 @@ def get_all_detections():
     """Get detection results for all running instances"""
     detections = {}
     
-    
+    # Get real detection results from running instances
+    for instance_name, instance_obj in instance_objects.items():
+        if instance_obj.latest_detections:
+            detections[instance_name] = instance_obj.latest_detections
     
     # Add fake detection results for testing (overrides real data)
     detections['Bigtree'] = {
@@ -378,7 +384,36 @@ def get_all_detections():
         ]
     }
     
+    # Check for detections and trigger WhatsApp alert
+    if detections['Bigtree']['results'][0]['score'] > 0.5:
+        settings = load_settings()
+        instance_config = next((inst for inst in settings['instances'] if inst['name'] == 'big tree'), None)
+        if not instance_config:
+            print(f"[SYSTEM] No latitude, longitude, or instance name found for big tree")
+            return jsonify({'detections': detections})
+        latitude = instance_config.get('latitude', 0.0)
+        longitude = instance_config.get('longitude', 0.0)
+        instance_name = instance_config.get('name', 'big tree')
+        
+        try:
+            send_whatsapp_alert(instance_name, latitude, longitude)
+            print(f"[SYSTEM] WhatsApp alert sent for detection in {instance_name} at location {latitude}, {longitude}")
+        except Exception as e:
+            print(f"[SYSTEM] Error sending WhatsApp alert for {instance_name}: {e}")
+    
     return jsonify({'detections': detections})
+
+
+account_sid = os.getenv('TWILIO_SID')
+auth_token = os.getenv('AUTH_TOKEN')
+client = Client(account_sid, auth_token)
+def send_whatsapp_alert(instance_name, latitude, longitude):
+    alert = client.messages.create(
+    from_='whatsapp:+14155238886',
+    to='whatsapp:+19164958045',
+    body=f'Wildfire detected at location {latitude}, {longitude} from {instance_name}. Please evacuate immediately.'
+    )
+
 
 @socketio.on('connect')
 def handle_connect():
