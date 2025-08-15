@@ -420,11 +420,16 @@ def get_all_detections():
 account_sid = os.getenv('TWILIO_SID')
 auth_token = os.getenv('AUTH_TOKEN')
 client = Client(account_sid, auth_token)
+phone_number = os.getenv('PHONE_NUMBER')
 def send_whatsapp_alert(instance_name, latitude, longitude):
+    if not phone_number:
+        print("[SYSTEM] Phone number not configured, skipping WhatsApp alert")
+        return
+    
     alert = client.messages.create(
-    from_='whatsapp:+14155238886',
-    to='whatsapp:+19164958045',
-    body=f'🚨 WILDFIRE ALERT 🚨\nLocation: {latitude}, {longitude}\nSource: Camera {instance_name}\nEvacuate immediately. Stay safe.'
+        from_='whatsapp:+14155238886',
+        to='whatsapp:+1' + phone_number,
+        body=f'🚨 WILDFIRE ALERT 🚨\nLocation: {latitude}, {longitude}\nSource: Camera {instance_name}\nEvacuate immediately. Stay safe.'
     )
 
 

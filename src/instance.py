@@ -106,7 +106,7 @@ class YoutubeInstance(Instance):
                         try:
                             detection_data = response.json()
                             self.latest_detections = detection_data
-                            print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
+                            #print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
                         except Exception as parse_error:
                             print(f"[INSTANCE {self.id}] Error parsing detection results: {parse_error}")
                 except Exception as e:
@@ -181,7 +181,7 @@ class CameraInstance(Instance):
                             try:
                                 detection_data = response.json()
                                 self.latest_detections = detection_data
-                                print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
+                                #print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
                             except Exception as parse_error:
                                 print(f"[INSTANCE {self.id}] Error parsing detection results: {parse_error}")
                 except Exception as e:
@@ -206,6 +206,6 @@ if __name__ == "__main__":
     camera_username = "root"
     camera_password = "Cashflow108!"
     folder_path = "./images"
-    instance = CameraInstance(2, "Camera-1", camera_url, "https://lax.pop.roboticscats.com/api/detects?apiKey=69ee9fa22340e2d84da76c282f9d2033", camera_username, camera_password, folder_path, 60)
+    instance = CameraInstance(2, "Camera-1", camera_url, "https://lax.pop.roboticscats.com/api/detects?apiKey=APIKEY", camera_username, camera_password, folder_path, 60)
     instance.start()
 
