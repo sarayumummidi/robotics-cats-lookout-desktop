@@ -424,7 +424,7 @@ def send_whatsapp_alert(instance_name, latitude, longitude):
     alert = client.messages.create(
     from_='whatsapp:+14155238886',
     to='whatsapp:+19164958045',
-    body=f'Wildfire detected at location {latitude}, {longitude} from Camera {instance_name}. Please evacuate immediately.'
+    body=f'🚨 WILDFIRE ALERT 🚨\nLocation: {latitude}, {longitude}\nSource: Camera {instance_name}\nEvacuate immediately. Stay safe.'
     )
 
 
