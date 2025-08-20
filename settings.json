@@ -5,7 +5,7 @@
             "youtube_url": "https://www.youtube.com/watch?v=HghxOQ12dy4",
             "frequency": 60,
             "instance_type": "youtube",
-            "lookout_endpoint": "https://lax.pop.roboticscats.com/api/detects?apiKey=APIKEY",
+            "lookout_endpoint": "https://lax.pop.roboticscats.com/api/detects?apiKey=d4732868019a2b99b04a25d88ea0d5c3",
             "latitude": 50.8641,
             "longitude": -115.356,
             "status": "stopped"
@@ -13,12 +13,12 @@
         {
             "name": "big tree",
             "instance_type": "camera",
-            "camera_url": "http://demo.com:/axis-cgi/jpg/image.cgi?resolution=1920x1080",
+            "camera_url": "http://demo.customer.roboticscats.com:55758/axis-cgi/jpg/image.cgi?resolution=1920x1080",
             "camera_username": "root",
-            "camera_password": "password",
+            "camera_password": "Cashflow108!",
             "folder_path": "./images",
             "frequency": 60,
-            "lookout_endpoint": "https://lax.pop.roboticscats.com/api/detects?apiKey=APIKEY",
+            "lookout_endpoint": "https://lax.pop.roboticscats.com/api/detects?apiKey=69ee9fa22340e2d84da76c282f9d2033",
             "latitude": 37.4848,
             "longitude": 122.2281,
             "status": "stopped"

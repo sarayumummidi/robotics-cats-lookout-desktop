@@ -12,29 +12,40 @@ function FullView() {
 
   const fetchImages = async () => {
     try {
-      const [imagesResponse, detectionsResponse] = await Promise.all([
-        fetch('/api/images'),
-        fetch('/api/detections'),
-      ])
+      const imagesResponse = await fetch('/api/images')
 
-      if (imagesResponse.ok && detectionsResponse.ok) {
+      if (imagesResponse.ok) {
         const imagesData = await imagesResponse.json()
-        const detectionsData = await detectionsResponse.json()
-        console.log(detectionsData)
+
+        // Detect if any image file changed (by modified_at)
+        const previous = images
+        const changed =
+          previous.length !== imagesData.images.length ||
+          imagesData.images.some((img, idx) => {
+            const prev = previous[idx]
+            return !prev || prev.modified_at !== img.modified_at
+          })
+
+        // If files changed, fetch detections
+        let detectionsMap = {}
+        if (changed) {
+          const detectionsResponse = await fetch('/api/detections')
+          if (detectionsResponse.ok) {
+            const detectionsData = await detectionsResponse.json()
+            detectionsMap = detectionsData.detections || {}
+          }
+        }
 
         const imagesWithDetections = imagesData.images.map((image) => {
-          const detections = detectionsData.detections[image.source] || null
-          console.log(`Image: ${image.source}, Detections:`, detections)
+          // Prefer exact backend instance match; fallback to display source
+          const key = image.instance || image.source
+          const detections = detectionsMap[key] || null
           return { ...image, detections }
         })
 
         setImages(imagesWithDetections || [])
       } else {
-        console.error(
-          'Failed to fetch data:',
-          imagesResponse.status,
-          detectionsResponse.status
-        )
+        console.error('Failed to fetch data:', imagesResponse.status)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -45,7 +56,6 @@ function FullView() {
 
   useEffect(() => {
     fetchImages()
-    // Refresh images every 10 seconds for more frequent updates
     const interval = setInterval(fetchImages, 10000)
     return () => clearInterval(interval)
   }, [])

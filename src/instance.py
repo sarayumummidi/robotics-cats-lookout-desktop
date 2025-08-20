@@ -106,7 +106,7 @@ class YoutubeInstance(Instance):
                         try:
                             detection_data = response.json()
                             self.latest_detections = detection_data
-                            #print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
+                            print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
                         except Exception as parse_error:
                             print(f"[INSTANCE {self.id}] Error parsing detection results: {parse_error}")
                 except Exception as e:
@@ -181,7 +181,7 @@ class CameraInstance(Instance):
                             try:
                                 detection_data = response.json()
                                 self.latest_detections = detection_data
-                                #print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
+                                print(f"[INSTANCE {self.id}] Detection results: {detection_data}")
                             except Exception as parse_error:
                                 print(f"[INSTANCE {self.id}] Error parsing detection results: {parse_error}")
                 except Exception as e:

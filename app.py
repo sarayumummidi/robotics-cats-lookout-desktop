@@ -32,7 +32,8 @@ SETTINGS_FILE = 'settings.json'
 instances_status = {}
 instance_objects = {}
 system_stats = {'cpu': 0, 'network_sent': 0, 'network_recv': 0}
-alerted_detections = {}  # Track which detections have been alerted about
+alerted_detections = {}  # Track last alert times per detection key
+ALERT_COOLDOWN_SECONDS = int(os.getenv('ALERT_COOLDOWN_SECONDS', '7200'))  # default 2 hours
 
 def load_settings():
     try:
@@ -341,29 +342,55 @@ def stop_instance(instance_name):
 def get_images():
     """Get list of all images from frames folder"""
     images = []
+
+    # Build a lookup of normalized instance names -> display/original name
+    settings = load_settings()
+    normalized_to_instance = {}
+    for inst in settings.get('instances', []):
+        normalized = inst.get('name', '').lower().replace(' ', '')
+        normalized_to_instance[normalized] = inst.get('name', '')
     
     # Get all jpg files from frames folder
     if os.path.exists('./frames'):
         for filename in os.listdir('./frames'):
             if filename.endswith('.jpg'):
+                full_path = os.path.join('./frames', filename)
+                try:
+                    mtime = os.path.getmtime(full_path)
+                    modified_iso = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    mtime = 0
+                    modified_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
                 # Extract instance name from filename (e.g., youtube_sprayvalley.jpg -> Spray Valley)
                 if filename.startswith('youtube_'):
-                    source_name = filename.replace('youtube_', '').replace('.jpg', '').replace('_', ' ').title()
+                    base = filename.replace('youtube_', '').replace('.jpg', '')
+                    source_name = base.replace('_', ' ').title()
                     instance_type = 'youtube'
                 elif filename.startswith('camera_'):
-                    source_name = filename.replace('camera_', '').replace('.jpg', '').replace('_', ' ').title()
+                    base = filename.replace('camera_', '').replace('.jpg', '')
+                    source_name = base.replace('_', ' ').title()
                     instance_type = 'camera'
                 else:
-                    source_name = filename.replace('.jpg', '').replace('_', ' ').title()
+                    base = filename.replace('.jpg', '')
+                    source_name = base.replace('_', ' ').title()
                     instance_type = 'unknown'
-                
+
+                normalized_base = base.lower().replace('_', '')
+                instance_name = normalized_to_instance.get(normalized_base, None)
+
                 images.append({
                     'url': f'/frames/{filename}',
                     'source': source_name,
                     'type': instance_type,
-                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    # Show file modified time in UI
+                    'timestamp': modified_iso,
+                    # Machine-friendly version for change detection
+                    'modified_at': mtime,
+                    # Exact instance name used by detections payload (if mapped)
+                    'instance': instance_name
                 })
-    
+
     return jsonify({'images': images})
 
 @app.route('/api/detections', methods=['GET'])
@@ -371,48 +398,80 @@ def get_all_detections():
     """Get detection results for all running instances"""
     detections = {}
     
-    # Get real detection results from running instances
+    # Only proceed if there is at least one frame image present
+    images_exist = os.path.exists('./frames') and any(fn.endswith('.jpg') for fn in os.listdir('./frames'))
+    if not images_exist:
+        return jsonify({'detections': {}})
+
+    # Get real detection results from running instances (only include non-empty results)
     for instance_name, instance_obj in instance_objects.items():
-        if instance_obj.latest_detections:
-            detections[instance_name] = instance_obj.latest_detections
+        det_payload = instance_obj.latest_detections
+        if isinstance(det_payload, dict):
+            results = det_payload.get('results', []) or []
+            if results:
+                detections[instance_name] = det_payload
     
-    # Add fake detection results for testing (overrides real data)
-    detections['Bigtree'] = {
-        'results': [
-            {
-                'bottom': 413,
-                'left': 726,
-                'right': 862,
-                'score': 0.8626816868782043,
-                'top': 345
-            }
-        ]
-    }
+    # Add fake detection results only if no real detections present and images exist
+    if images_exist and not detections:
+        detections['Bigtree'] = {
+            'results': [
+                {
+                    'bottom': 413,
+                    'left': 726,
+                    'right': 862,
+                    'score': 0.8626816868782043,
+                    'top': 345
+                }
+            ]
+        }
     
-    # Check for detections and trigger WhatsApp alert
-    if detections['Bigtree']['results'][0]['score'] > 0.5:
-        # Create a unique key for this detection to prevent duplicates
-        detection_key = f"big_tree_{detections['Bigtree']['results'][0]['score']}_{detections['Bigtree']['results'][0]['left']}_{detections['Bigtree']['results'][0]['top']}"
+    # Check for detections and trigger WhatsApp alert per instance
+    for instance_name, det in detections.items():
+        results = det.get('results', []) or []
+        if not results:
+            continue
         
-        # Only send alert if we haven't already alerted for this specific detection
-        if detection_key not in alerted_detections:
+        # Iterate over all results for this instance
+        for r in results:
+            score = r.get('score', 0)
+            if score < 0.5:
+                continue
+            left = r.get('left')
+            top = r.get('top')
+            # Unique key per instance and location (rounded score to reduce key churn)
+            detection_key = f"{instance_name.lower().replace(' ', '_')}_{left}_{top}_{round(score, 2)}"
+            
+            now = datetime.now()
+            last_sent = alerted_detections.get(detection_key)
+            # checking if there was a last detection for this instance/source
+            should_send = (last_sent is None) or ((now - last_sent).total_seconds() >= ALERT_COOLDOWN_SECONDS)
+            
+            if not should_send:
+                if last_sent is not None:
+                    remaining = ALERT_COOLDOWN_SECONDS - int((now - last_sent).total_seconds())
+                else:
+                    remaining = ALERT_COOLDOWN_SECONDS
+                print(f"[SYSTEM] Alert suppressed for detection {detection_key}; cooldown active for another {remaining}s")
+                continue
+            
+            # Lookup instance metadata (lat/lon) by instance name
             settings = load_settings()
-            instance_config = next((inst for inst in settings['instances'] if inst['name'] == 'big tree'), None)
+            instance_config = next((
+                inst for inst in settings['instances']
+                if inst['name'].lower().replace(' ', '').replace('_','') == instance_name.lower().replace(' ', '').replace('_','')
+            ), None)
             if not instance_config:
-                print(f"[SYSTEM] No latitude, longitude, or instance name found for big tree")
-                return jsonify({'detections': detections})
+                print(f"[SYSTEM] No metadata found for instance '{instance_name}', skipping alert")
+                continue
             latitude = instance_config.get('latitude', 0.0)
             longitude = instance_config.get('longitude', 0.0)
-            instance_name = instance_config.get('name', 'big tree')
             
             try:
                 send_whatsapp_alert(instance_name, latitude, longitude)
-                alerted_detections[detection_key] = datetime.now()
-                print(f"[SYSTEM] WhatsApp alert sent for detection in {instance_name} at location {latitude}, {longitude}")
+                alerted_detections[detection_key] = now
+                print(f"[SYSTEM] WhatsApp alert sent for {instance_name} at {latitude}, {longitude}")
             except Exception as e:
                 print(f"[SYSTEM] Error sending WhatsApp alert for {instance_name}: {e}")
-        else:
-            print(f"[SYSTEM] Alert already sent for detection {detection_key}, skipping...")
     
     return jsonify({'detections': detections})
 
